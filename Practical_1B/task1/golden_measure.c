@@ -35,19 +35,45 @@ static uint32_t golden_isqrt(uint32_t x)
 static double timestamp_us(void)
 {
 
+
 }
 
 /* Hand check: r^2 <= x < (r+1)^2, written out in full. */
 static int hand_check(uint32_t x, uint32_t r)
 {
-}
+    return ((uint64_t) r*r <= x) && (x < (uint64_t)(r +1)*(r+1));}
 
 static double time_n_calls(long reps)
 {
+    struct timespec start, end;
+
+    clock_gettime(CLOCK_MONOTONIC, &start);
+
+    volatile uint32_t n =987654321 ;
+    for (int i = 0; i < reps; i++) {
+        golden_isqrt(n);
+    }
+
+    clock_gettime(CLOCK_MONOTONIC, &end);
+
+    double diff = (double) (end.tv_sec - start.tv_sec) + (double)(end.tv_nsec - start.tv_nsec)*1e-9; 
+
+    return diff;
 
 }
 
 int main(void)
 {
+    for (uint8_t i = 0; i < sizeof(inputs)/sizeof(inputs[0]); i++) {
+        uint32_t r = golden_isqrt(inputs[i]);
+        int ok = hand_check(inputs[i], r);
+        printf("%-12u %-12u %-8s\n", inputs[i], r, ok ? "PASS" : "FAIL");
+    }
+
+    double time = time_n_calls(1e9);
+
+    printf("Time Elapsed: %lf\n", time);
+
+    return 0;
 
 }
