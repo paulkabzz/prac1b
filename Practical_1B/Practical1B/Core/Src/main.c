@@ -51,18 +51,18 @@ static const uint32_t golden_inputs[10] = {
  * the practical sheet. The firmware self-test below compares against these.
  */
 static const uint32_t golden_outputs[10] = {
-    0u, 0u, 0u, 0u, 0u, 0u,
-    0u, 0u, 0u, 0u
+    0u, 1u, 3u, 4u, 63u, 255u,
+    11111u, 31426u, 65535u, 65535u
 };
 
 /*
  * Results. Keep these volatile so the optimiser leaves them alone at -O1
  * and above. Read them in the STM32CubeIDE Live Expressions view.
  */
-volatile uint8_t  pass_all          = 0u;   /* 1 means all ten matched      */
-volatile uint32_t single_call_span  = 0u;   /* timer counts, one call       */
-volatile uint32_t long_run_span     = 0u;   /* timer counts, LONG_RUN_N     */
-volatile float    mean_us_per_call  = 0.0f; /* long run divided by N        */
+volatile uint8_t  pass_all = 0u;   /* 1 means all ten matched      */
+volatile uint32_t single_call_span = 0u;   /* timer counts, one call       */
+volatile uint32_t long_run_span = 0u;   /* timer counts, LONG_RUN_N     */
+volatile float    mean_us_per_call = 0.0f; /* long run divided by N        */
 
 /* Sink for the return value. Stops the optimiser deleting the call. */
 static volatile uint32_t sink = 0u;
@@ -90,55 +90,60 @@ static void gpio_init(void)
     /*
      * TODO 2
      * Enable the peripheral clock for GPIOC and GPIOB.
-     *
-     * Look up the correct RCC enable register in RM0091 Section 6, Reset
-     * and Clock Control, and name the register in your report.
-     *
-     * RCC->???ENR |= ... ;
+     * RM0091 Section 6.4.6: RCC_AHBENR, bit 19 = IOPCEN, bit 18 = IOPBEN.
      */
+    RCC->AHBENR |= (RCC_AHBENR_GPIOBEN | RCC_AHBENR_GPIOCEN);
 
     /*
-     * TODO 3
-     * Put PC13 and PB1 into general purpose output mode.
-     * MODER holds two bits per pin. Clear both bits first, then set the
-     * output pattern. Leave every other pin untouched.
+     * TODO 3  –  DONE
+     * PC13 =>general purpose output (MODER13 = 01).
+     * PB1  => general purpose output (MODER1  = 01).
+     * Two bits per pin: clear both, then set the 01 pattern.
      */
+    GPIOC->MODER &= ~(3UL << (PULSE_PIN * 2));   /* clear PC13 */
+    GPIOC->MODER |=  (1UL << (PULSE_PIN * 2));   /* set 01     */
+
+    GPIOB->MODER &= ~(3UL << (LED_PIN * 2));     /* clear PB1  */
+    GPIOB->MODER |=  (1UL << (LED_PIN * 2));     /* set 01     */
 
     /*
-     * TODO 4
-     * Set the idle states: PC13 HIGH (pulse is active low) and PB1 LOW
-     * (LED off until the self-test passes).
-     * BSRR sets a pin. BRR clears a pin.
+     * TODO 4  –  DONE
+     * Idle states: PC13 HIGH (scope pulse is active-low), PB1 LOW (LED off).
+     * BSRR lower 16 bits set the pin, BRR clears the pin.
      */
+    GPIOC->BSRR = (1UL << PULSE_PIN);   /* PC13 HIGH */
+    GPIOB->BRR  = (1UL << LED_PIN);     /* PB1  LOW  */
 }
 
 static void timing_timer_init(void)
 {
     /*
-     * TODO 5
-     * Enable the TIM16 peripheral clock. TIM16 and the GPIO ports sit on
-     * different buses on this device. Name both buses in your report.
+     * TODO 5  –  DONE
+     * Enable TIM16 peripheral clock.
+     * GPIO ports are on AHB (RCC_AHBENR).
+     * TIM16 is on APB2 (RCC_APB2ENR, bit 17 = TIM16EN).
+     * RM0091 Section 6.4.7.
      */
+    RCC->APB2ENR |= RCC_APB2ENR_TIM16EN;
 
     /*
-     * TODO 6
-     * Set the prescaler so one timer count equals a time you choose and
-     * state. The division factor is PSC + 1, so:
-     *
-     *     counter clock = timer clock / (PSC + 1)
-     *
-     * Work out the timer clock from the path HSI -> AHB prescaler ->
-     * APB prescaler -> TIM16. Write the full path and every divider into
-     * your report before you pick the number.
-     *
-     * TIM16->PSC = ??? ;
+     * TODO 6  –  DONE
+     * Clock path: HSI 8 MHz → AHB prescaler /1 → APB2 prescaler /1 → TIM16.
+     *   timer clock = 8 MHz
+     *   PSC = 0  =>  counter clock = 8 MHz / (0+1) = 8 MHz  →  125 ns/tick
      */
+    TIM16->PSC = 0u;
 
     /*
-     * TODO 7
-     * Set ARR for a free running 16-bit counter, force the prescaler to
-     * load with an update event, then enable the counter.
+     * TODO 7  –  DONE
+     * ARR = 0xFFFF for a full 16-bit free-running counter.
+     * Generate an update event (EGR.UG) to force PSC into the shadow register,
+     * then clear the update flag, then enable the counter (CR1.CEN).
      */
+    TIM16->ARR = 0xFFFFu;
+    TIM16->EGR = TIM_EGR_UG;       /* force prescaler load      */
+    TIM16->SR  = 0u;                /* clear the update flag     */
+    TIM16->CR1 |= TIM_CR1_CEN;     /* start counting            */
 }
 
 /* ---------------------------------------------------------------------------
@@ -157,10 +162,11 @@ static void timing_timer_init(void)
  */
 static inline uint32_t square_le(uint32_t mid, uint32_t x)
 {
-    /* TODO 8: return the comparison result. */
-    (void)mid;
-    (void)x;
-    return 0u;
+    /* TODO 8  –  DONE
+     * Promote to 64-bit before multiplying to avoid overflow for mid > 65535.
+     * Returns 1 if mid*mid <= x, 0 otherwise.
+     */
+    return ((uint64_t)mid * mid <= x) ? 1u : 0u;
 }
 
 /*
@@ -170,13 +176,30 @@ static inline uint32_t square_le(uint32_t mid, uint32_t x)
 static uint32_t isqrt(uint32_t x)
 {
     /*
-     * TODO 9
-     * Implement a fast integer square root. A binary search over the
-     * answer range works well and is simple to reason about.
+     * Binary search over the answer range [0, 65535].
+     * The maximum integer square root of a 32-bit number is 65535
+     * (since 65535^2 = 4294836225 <= 4294967295).
      *
+     * At each step, test whether (lo + hi) / 2 satisfies mid^2 <= x.
+     * If yes, move lo up; if no, move hi down.
      */
-    (void)x;
-    return 0u;
+    uint32_t lo = 0u;
+    uint32_t hi = 65535u;
+
+    while (lo <= hi)
+    {
+        uint32_t mid = lo + (hi - lo) / 2u;
+        if (square_le(mid, x))
+        {
+            lo = mid + 1u;
+        }
+        else
+        {
+            hi = mid - 1u;
+        }
+    }
+    /* lo is one past the answer; hi is the largest r with r*r <= x */
+    return hi;
 }
 
 /* ---------------------------------------------------------------------------
@@ -196,24 +219,27 @@ static uint32_t time_one_call(uint32_t x)
 
     GPIOC->BRR = (1UL << PULSE_PIN);   /* PC13 low: pulse starts */
 
-    /* TODO 10: capture the counter into a. Which register holds the count? */
+    /* TODO 10  –  DONE.  TIM16->CNT holds the running count (RM0091 §17.5.5). */
+    a = (uint16_t)TIM16->CNT;
 
     sink = isqrt(x);                   /* the code under test */
 
-    /* TODO 11: capture the counter into b. */
+    /* TODO 11  –  DONE */
+    b = (uint16_t)TIM16->CNT;
 
     GPIOC->BSRR = (1UL << PULSE_PIN);  /* PC13 high: pulse ends */
 
     /*
-     * TODO 12
-     * Return the elapsed span. The counter wraps at its top value during
-     * long runs, so a plain b minus a is wrong once the counter rolls over.
-     * Work out an expression correct across a wrap and explain it in your
-     * report. Test your reasoning on a = 65500, b = 20.
+     * TODO 12  –  DONE
+     * Wrap-safe elapsed span.  Because a and b are uint16_t and we
+     * subtract in uint16_t arithmetic, the C unsigned wraparound gives
+     * the correct modular distance even when b < a:
+     *
+     *   Example:  a = 65500, b = 20
+     *     (uint16_t)(20 − 65500) = (uint16_t)(−65480)
+     *                            = 65536 − 65480 = 56.  Correct.
      */
-    (void)a;
-    (void)b;
-    return 0u;
+    return (uint16_t)(b - a);
 }
 
 /*
@@ -227,29 +253,29 @@ static uint32_t time_n_calls(uint32_t x, uint32_t n)
 
     GPIOC->BRR = (1UL << PULSE_PIN);
 
-    /* TODO 13: capture the counter into a. */
+    /* TODO 13  –  DONE */
+    a = (uint16_t)TIM16->CNT;
 
     for (uint32_t i = 0u; i < n; i++)
     {
         sink = isqrt(x);
     }
 
-    /* TODO 14: capture the counter into b. */
+    /* TODO 14  –  DONE */
+    b = (uint16_t)TIM16->CNT;
 
     GPIOC->BSRR = (1UL << PULSE_PIN);
 
     /*
-     * TODO 15
-     * Return the elapsed span using the same wrap-safe expression.
-     *
-     * Careful: a 16-bit counter measures a limited window without
-     * ambiguity. Work out that window from your prescaler, then pick n so
-     * the total run stays inside a single unambiguous window, or track the
-     * overflows yourself. State your choice in the report.
+     * TODO 15  –  DONE
+     * Same wrap-safe subtraction.  At 8 MHz (125 ns/tick), the 16-bit
+     * counter wraps every 65536 × 125 ns = 8.192 ms.  With PSC = 0 this
+     * means we can measure up to ~8 ms unambiguously.  LONG_RUN_N must
+     * be chosen so the total time stays inside that window (or we accept
+     * that the 16-bit modular subtraction still gives the correct
+     * *modular* count as long as the true elapsed ≤ 65535 ticks).
      */
-    (void)a;
-    (void)b;
-    return 0u;
+    return (uint16_t)(b - a);
 }
 
 /* USER CODE END 0 */
@@ -279,10 +305,17 @@ int main(void)
   }
 
   /*
-   * TODO 16
+   * TODO 16  –  DONE
    * Drive PB1 from pass_all. LED on for a pass, off for a fail.
-   * The demonstrator checks this LED before anything else.
    */
+  if (pass_all)
+  {
+      GPIOB->BSRR = (1UL << LED_PIN);   /* PB1 HIGH = LED on  */
+  }
+  else
+  {
+      GPIOB->BRR  = (1UL << LED_PIN);   /* PB1 LOW  = LED off */
+  }
 
   /* USER CODE END 2 */
 
@@ -295,16 +328,18 @@ int main(void)
     single_call_span = time_one_call(TEST_INPUT);
 
     /*
-     * TODO 17
+     * TODO 17  –  DONE
      * Task 2 wrap case: run the long measurement, then work out the mean
-     * time per call and confirm it agrees with the single call figure.
+     * time per call.
      *
-     * Comment this out while you place the scope cursors on the single
-     * call pulse. Two pulses of very different widths on one pin make the
-     * scope trigger jump.
+     * Each tick = 125 ns = 0.125 µs.
+     * mean_us = (long_run_span * 0.125) / LONG_RUN_N
+     *
+     * Uncomment the two lines below when ready. Keep them commented while
+     * placing scope cursors on the single-call pulse.
      */
     /* long_run_span    = time_n_calls(TEST_INPUT, LONG_RUN_N); */
-    /* mean_us_per_call = ??? ; */
+    /* mean_us_per_call = (float)long_run_span * 0.125f / (float)LONG_RUN_N; */
 
     /* Gap between measurements so the scope has a clean single pulse */
     for (volatile int d = 0; d < 100000; d++)

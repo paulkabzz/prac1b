@@ -78,32 +78,23 @@ int main(void)
 #if (ACTIVE_TASK == 4)
 
   /*
-   * TODO 1
-   * Start the ADC in continuous mode and start DAC channel 1, then hand
-   * over to the Assembly loop.
-   *
-   * HAL_ADC_Start(&hadc);
-   * HAL_DAC_Start(&hdac1, DAC_CHANNEL_1);
-   * DSP_Loop();
-   *
-   * Two settings in the .ioc decide whether this works at all:
-   *   Continuous Conversion Mode must be Enabled, or the ADC converts once
-   *   and stops, and your DAC output sits flat.
-   *   Overrun must be set to "Overrun data overwritten", or the ADC halts
-   *   the moment your Assembly reads it slower than it converts.
+   * TODO 1  –  DONE
+   * Start ADC in continuous mode and DAC channel 1, then hand over
+   * to the Assembly loop.  The .ioc has Continuous Conversion = Enabled
+   * and Overrun = Overwritten.
    */
+  HAL_ADC_Start(&hadc);
+  HAL_DAC_Start(&hdac1, DAC_CHANNEL_1);
+  DSP_Loop();   /* never returns */
 
 #elif (ACTIVE_TASK == 5)
 
   /*
-   * TODO 2
+   * TODO 2  –  DONE
    * Hand over to the LCD routine.
-   *
-   * LCD_Run();
-   *
-   * The LCD needs its power rail settled before the initialisation
-   * sequence starts. Add the wait inside lcd.s, not here.
+   * The LCD needs its power rail settled before init; the wait is in lcd.s.
    */
+  LCD_Run();   /* never returns */
 
 #else
   #error "Set ACTIVE_TASK to 4 or 5"

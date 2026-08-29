@@ -32,48 +32,59 @@ static uint32_t golden_isqrt(uint32_t x)
     return (uint32_t)floor(sqrt((double)x));
 }
 
-static double timestamp_us(void)
-{
-
-
-}
-
 /* Hand check: r^2 <= x < (r+1)^2, written out in full. */
 static int hand_check(uint32_t x, uint32_t r)
 {
-    return ((uint64_t) r*r <= x) && (x < (uint64_t)(r +1)*(r+1));}
+    return ((uint64_t) r*r <= x) && (x < (uint64_t)(r +1)*(r+1));
+}
 
 static double time_n_calls(long reps)
 {
     struct timespec start, end;
+    volatile uint32_t x = 0;
 
     clock_gettime(CLOCK_MONOTONIC, &start);
 
-    volatile uint32_t n =987654321 ;
-    for (int i = 0; i < reps; i++) {
-        golden_isqrt(n);
+    for (long i = 0; i < reps; i++) {
+        x = golden_isqrt(987654321u);
     }
 
     clock_gettime(CLOCK_MONOTONIC, &end);
 
-    double diff = (double) (end.tv_sec - start.tv_sec) + (double)(end.tv_nsec - start.tv_nsec)*1e-9; 
+    (void)x;
 
-    return diff;
+    double elapsed_s = (double)(end.tv_sec - start.tv_sec)
+                     + (double)(end.tv_nsec - start.tv_nsec) * 1e-9;
 
+    return (elapsed_s / (double)reps) * 1e9;
 }
 
 int main(void)
 {
-    for (uint8_t i = 0; i < sizeof(inputs)/sizeof(inputs[0]); i++) {
-        uint32_t r = golden_isqrt(inputs[i]);
+
+    for (int i = 0; i < (int)(sizeof(inputs) / sizeof(inputs[0])); i++) {
+       uint32_t r = golden_isqrt(inputs[i]);
         int ok = hand_check(inputs[i], r);
         printf("%-12u %-12u %-8s\n", inputs[i], r, ok ? "PASS" : "FAIL");
     }
 
-    double time = time_n_calls(1e9);
+    /* ---- Full hand check for 987654321 ---- */
+    printf("Handcheck for %u: %s", 987654321u, hand_check(987654321u, golden_isqrt(987654321u)) ? "PASS": "FAIL" );
 
-    printf("Time Elapsed: %lf\n", time);
+    /* ---- Timing: two runs with different repetition counts ---- */
+    long reps1 = 100000;
+    long reps2 = 1e6;
+
+    double ns1 = time_n_calls(reps1);
+    double ns2 = time_n_calls(reps2);
+    double mean   = (ns1 + ns2) / 2.0;
+    double spread = fabs(ns1 - ns2);
+
+    printf("\n---- Timing results ----\n");
+    printf("Run 1: %ld reps => %.2f ns/call\n", reps1, ns1);
+    printf("Run 2: %ld reps => %.2f ns/call\n", reps2, ns2);
+    printf("Mean:  %.2f ns/call\n", mean);
+    printf("Spread: %.2f ns\n", spread);
 
     return 0;
-
 }
