@@ -83,6 +83,7 @@ int main(void)
    * to the Assembly loop.  The .ioc has Continuous Conversion = Enabled
    * and Overrun = Overwritten.
    */
+  HAL_ADCEx_Calibration_Start(&hadc);
   HAL_ADC_Start(&hadc);
   HAL_DAC_Start(&hdac1, DAC_CHANNEL_1);
   DSP_Loop();   /* never returns */

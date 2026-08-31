@@ -1,4 +1,9 @@
-../Core/Src/main.c:176:17:isqrt	24	static
-../Core/Src/main.c:356:6:SystemClock_Config	72	static
-../Core/Src/main.c:286:5:main	40	static
-../Core/Src/main.c:385:6:Error_Handler	0	static
+../Core/Src/main.c:88:13:gpio_init	8	static
+../Core/Src/main.c:118:13:timing_timer_init	8	static
+../Core/Src/main.c:163:24:square_le	32	static
+../Core/Src/main.c:176:17:isqrt	32	static
+../Core/Src/main.c:215:17:time_one_call	32	static
+../Core/Src/main.c:249:17:time_n_calls	24	static
+../Core/Src/main.c:286:5:main	16	static
+../Core/Src/main.c:356:6:SystemClock_Config	80	static
+../Core/Src/main.c:385:6:Error_Handler	8	static

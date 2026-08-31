@@ -90,7 +90,7 @@ static void gpio_init(void)
     /*
      * TODO 2
      * Enable the peripheral clock for GPIOC and GPIOB.
-     * RM0091 Section 6.4.6: RCC_AHBENR, bit 19 = IOPCEN, bit 18 = IOPBEN.
+     * RM0091 Section 7.4.6: RCC_AHBENR, bit 19 = IOPCEN, bit 18 = IOPBEN.
      */
     RCC->AHBENR |= (RCC_AHBENR_GPIOBEN | RCC_AHBENR_GPIOCEN);
 
@@ -100,19 +100,19 @@ static void gpio_init(void)
      * PB1  => general purpose output (MODER1  = 01).
      * Two bits per pin: clear both, then set the 01 pattern.
      */
-    GPIOC->MODER &= ~(3UL << (PULSE_PIN * 2));   /* clear PC13 */
-    GPIOC->MODER |=  (1UL << (PULSE_PIN * 2));   /* set 01     */
+    GPIOC->MODER &= ~(GPIO_MODER_MODER13);   /* clear PC13 */
+    GPIOC->MODER |=  (GPIO_MODER_MODER13_0);   /* set 01     */
 
-    GPIOB->MODER &= ~(3UL << (LED_PIN * 2));     /* clear PB1  */
-    GPIOB->MODER |=  (1UL << (LED_PIN * 2));     /* set 01     */
+    GPIOB->MODER &= ~(GPIO_MODER_MODER1);     /* clear PB1  */
+    GPIOB->MODER |=  (GPIO_MODER_MODER1_0);     /* set 01     */
 
     /*
      * TODO 4  –  DONE
      * Idle states: PC13 HIGH (scope pulse is active-low), PB1 LOW (LED off).
      * BSRR lower 16 bits set the pin, BRR clears the pin.
      */
-    GPIOC->BSRR = (1UL << PULSE_PIN);   /* PC13 HIGH */
-    GPIOB->BRR  = (1UL << LED_PIN);     /* PB1  LOW  */
+    GPIOC->BSRR = (GPIO_BSRR_BS_13);   /* PC13 HIGH */
+    GPIOB->BRR  = (GPIO_BSRR_BR_1);     /* PB1  LOW  */
 }
 
 static void timing_timer_init(void)
@@ -122,15 +122,15 @@ static void timing_timer_init(void)
      * Enable TIM16 peripheral clock.
      * GPIO ports are on AHB (RCC_AHBENR).
      * TIM16 is on APB2 (RCC_APB2ENR, bit 17 = TIM16EN).
-     * RM0091 Section 6.4.7.
+     * RM0091 Section 7.4.7.
      */
     RCC->APB2ENR |= RCC_APB2ENR_TIM16EN;
 
     /*
      * TODO 6  –  DONE
-     * Clock path: HSI 8 MHz → AHB prescaler /1 → APB2 prescaler /1 → TIM16.
+     * Clock path: HSI 8 MHz -> AHB prescaler /1 -> APB2 prescaler /1 -> TIM16.
      *   timer clock = 8 MHz
-     *   PSC = 0  =>  counter clock = 8 MHz / (0+1) = 8 MHz  →  125 ns/tick
+     *   PSC = 0  =>  counter clock = 8 MHz / (0+1) = 8 MHz  ->  125 ns/tick
      */
     TIM16->PSC = 0u;
 
