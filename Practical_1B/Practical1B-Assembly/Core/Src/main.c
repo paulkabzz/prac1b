@@ -32,7 +32,7 @@
 /* USER CODE BEGIN PD */
 
 /* Pick the task to run: 4 for the phase delay, 5 for the LCD. */
-#define ACTIVE_TASK   4
+#define ACTIVE_TASK   5
 
 /*
  * ADC channel for Task 4.

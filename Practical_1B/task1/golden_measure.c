@@ -72,8 +72,8 @@ int main(void)
     printf("Handcheck for %u: %s", 987654321u, hand_check(987654321u, golden_isqrt(987654321u)) ? "PASS": "FAIL" );
 
     /* ---- Timing: two runs with different repetition counts ---- */
-    long reps1 = 100000;
-    long reps2 = 1e6;
+    long reps1 = 1e6;
+    long reps2 = 10e6   ;
 
     double ns1 = time_n_calls(reps1);
     double ns2 = time_n_calls(reps2);

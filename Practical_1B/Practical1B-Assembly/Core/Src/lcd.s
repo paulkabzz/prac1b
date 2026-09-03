@@ -59,10 +59,7 @@ LCD_Run:
 
     @ TODO 2 – DONE: Call the 4-bit initialization sequence.
     BL   LCD_Init
-
-    @ TODO 3 – DONE: Write the character 'A' (0x41) to the display.
-    MOVS R0, #0x41             @ 'A'
-    BL   LCD_WriteData
+  LCD_WriteData
 
 hang:
     B    hang

@@ -68,8 +68,8 @@
 @ ---------------------------------------------------------------------------
 @ Peripheral addresses
 @ ---------------------------------------------------------------------------
-    .equ ADC_DR,      0x40012440    @ ADC data register (RM0091 §13.12.5)
-    .equ DAC_DHR12R1, 0x40007408    @ DAC ch1 12-bit right-aligned (RM0091 §14.5.3)
+    .equ ADC_DR,      0x40012440    @ ADC data register (RM0091 §13.12.11)
+    .equ DAC_DHR12R1, 0x40007408    @ DAC ch1 12-bit right-aligned (RM0091 §14.5.2)
 
     .section .text.DSP_Loop, "ax", %progbits
 
